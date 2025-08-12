@@ -377,7 +377,7 @@ class WhatsAppMessage(Document):
 	def send_whatsapp_via_freshchat(self):
 		freshchat_settings = frappe.get_single("Freshchat Settings")
 
-		api_key = freshchat_settings.api_key
+		api_key = freshchat_settings.get_password("api_key")
 		api_endpoint = urljoin(freshchat_settings.api_endpoint, "/v2/outbound-messages/whatsapp")
 		channel_id = freshchat_settings.channel_id
 		namespace = freshchat_settings.namespace
@@ -548,7 +548,7 @@ class WhatsAppMessage(Document):
 
 		freshchat_settings = frappe.get_single("Freshchat Settings")
 
-		api_key = freshchat_settings.api_key
+		api_key = freshchat_settings.get_password("api_key")
 		api_endpoint = urljoin(freshchat_settings.api_endpoint, "/v2/outbound-messages")
 
 		headers = {
