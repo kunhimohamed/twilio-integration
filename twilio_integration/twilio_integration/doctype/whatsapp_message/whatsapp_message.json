@@ -18,6 +18,7 @@
   "status",
   "retry",
   "priority",
+  "status_reconciliation_failed",
   "section_break_jhlu",
   "message",
   "column_break_o6kp",
@@ -291,6 +292,15 @@
    "label": "Media URL",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "status_reconciliation_failed",
+   "fieldname": "status_reconciliation_failed",
+   "fieldtype": "Check",
+   "label": "Status Reconciliation Failed",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -298,7 +308,7 @@
  "index_web_pages_for_search": 1,
  "links": [],
  "max_attachments": 1,
- "modified": "2025-08-06 11:16:29.004461",
+ "modified": "2025-10-31 11:36:59.094391",
  "modified_by": "Administrator",
  "module": "Twilio Integration",
  "name": "WhatsApp Message",

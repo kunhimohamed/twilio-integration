@@ -718,7 +718,7 @@ def send_whatsapp_message(message_name, auto_commit=True, now=False):
 		else:
 			frappe.log_error(
 				title=_("Failed to send WhatsApp Message"),
-				message=str(e),
+				message=frappe.get_traceback(),
 				reference_doctype="WhatsApp Message",
 				reference_name=message_doc.name
 			)
@@ -819,7 +819,7 @@ def download_incoming_media(message_name, auto_commit=True, now=False):
 		else:
 			frappe.log_error(
 				title=_("Failed to download incoming WhatsApp media"),
-				message=str(e),
+				message=frappe.get_traceback(),
 				reference_doctype="WhatsApp Message",
 				reference_name=message_doc.name
 			)
@@ -967,6 +967,7 @@ def incoming_message_callback(args):
 	return out
 
 
+@frappe.task(queue="long")
 def update_messages_pending_status_reconciliation(limit=100, auto_commit=True):
 	"""
 	Reconcile delivery status for all messages with status 'Sent' or 'Queued'
@@ -980,12 +981,10 @@ def update_messages_pending_status_reconciliation(limit=100, auto_commit=True):
 		reconcile_message_status(name, auto_commit=auto_commit)
 
 
-@frappe.task(queue="long")
 def reconcile_message_status(message_name, auto_commit=True):
+	message_doc = frappe.get_doc("WhatsApp Message", message_name, for_update=True)
 	try:
-		message_doc = frappe.get_doc("WhatsApp Message", message_name, for_update=True)
 		message_doc.update_message_delivery_status()
-
 		if auto_commit:
 			frappe.db.commit()
 
@@ -993,9 +992,20 @@ def reconcile_message_status(message_name, auto_commit=True):
 		if auto_commit:
 			frappe.db.rollback()
 
+		if message_doc.retry < 3:
+			message_doc.db_set({
+				"retry": message_doc.retry + 1,
+				"error": str(e),
+			}, commit=auto_commit)
+		else:
+			message_doc.db_set({
+				"status_reconciliation_failed": 1,
+				"error": str(e),
+			}, commit=auto_commit)
+
 		frappe.log_error(
 			title=_("Error Reconciling WhatsApp Message Delivery Status"),
-			message=str(e),
+			message=frappe.get_traceback(),
 			reference_doctype="WhatsApp Message",
 			reference_name=message_name
 		)
@@ -1010,6 +1020,7 @@ def get_messages_pending_status_reconciliation(limit):
 		FROM `tabWhatsApp Message`
 		WHERE status IN ('Sent', 'Queued')
 			AND sent_received = 'Sent'
+			AND status_reconciliation_failed = 0
 			AND id IS NOT NULL
 		ORDER BY creation DESC
 		LIMIT %s
