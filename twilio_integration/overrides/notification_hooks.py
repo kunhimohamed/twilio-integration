@@ -97,6 +97,8 @@ class NotificationTwilio(Notification):
 		else:
 			message = frappe.render_template(self.message, context)
 
+		self.flags.message = message
+
 		timeline_doctype, timeline_name = self.get_timeline_doctype_and_name(doc)
 
 		attachments = self.get_attachment(doc)
