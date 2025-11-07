@@ -6,7 +6,10 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils.password import get_decrypted_password
 from frappe.utils import get_site_url, convert_utc_to_system_timezone, time_diff, now_datetime, cint
+from frappe.utils.response import build_response
 from frappe.utils.verified_command import get_signed_params, verify_request
+from frappe.website.page_renderers.base_renderer import BaseRenderer
+from frappe.website.router import evaluate_dynamic_routes
 from ...twilio_handler import Twilio
 from urllib.parse import quote, urlparse, urljoin
 from datetime import timedelta
@@ -324,9 +327,22 @@ class WhatsAppMessage(Document):
 					media_url = f"api/method/twilio.whatsapp_media?id={quote(wa_msg.name)}"
 					content_variables[template.media_variable] = media_url
 				else:
+					file_name = "Attachment.pdf"
+					if attachment:
+						if attachment.get("print_format_attachment"):
+							if attachment.get("file_name"):
+								file_name = attachment.get("file_name")
+							elif attachment.get("name"):
+								file_name = attachment.get("name") + ".pdf"
+						elif attachment.get("fid"):
+							file_details = frappe.db.get_value("File", attachment.get("fid"),
+								["original_file_name", "file_name"], as_dict=1)
+							if file_details:
+								file_name = file_details.original_file_name or file_details.file_name
+
 					site_url = get_site_url(frappe.local.site)
 					params = get_signed_params({"id": wa_msg.name})
-					media_url = f"{site_url}/api/method/whatsapp.secure_whatsapp_media.pdf?{params}"
+					media_url = f"{site_url}/secure-whatsapp-media/{file_name}?{params}"
 
 		if template.button_variable:
 			button_url = content_variables.get(template.button_variable)
@@ -1112,6 +1128,28 @@ def serve_whatsapp_media(message_doc):
 		frappe.local.response.type = "download"
 	else:
 		raise frappe.DoesNotExistError
+
+
+class WhatsAppMediaRenderer(BaseRenderer):
+	def can_render(self):
+		path = self.path
+		if not path.startswith("secure-whatsapp-media/"):
+			return False
+
+		return True
+
+	def render(self):
+		from werkzeug.routing import Rule
+
+		rules = [
+			Rule("/secure-whatsapp-media/<path:file_name>"),
+		]
+		evaluate_dynamic_routes(rules, self.path)
+		response = secure_whatsapp_media(id=frappe.form_dict.id, signature=frappe.form_dict._signature)
+		if response:
+			return response
+
+		return build_response()
 
 
 def on_doctype_update():

@@ -74,3 +74,5 @@ scheduler_events = {
 		"twilio_integration.twilio_integration.doctype.whatsapp_message.whatsapp_message.expire_whatsapp_message_queue",
 	],
 }
+
+page_renderer = "twilio_integration.twilio_integration.doctype.whatsapp_message.whatsapp_message.WhatsAppMediaRenderer"
