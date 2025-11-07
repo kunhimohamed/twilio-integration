@@ -10,6 +10,7 @@
   "template_sid",
   "column_break_4l5u",
   "media_variable",
+  "button_variable",
   "column_break_r7ey",
   "reply_handler",
   "section_break_xvor",
@@ -74,12 +75,17 @@
    "fieldname": "section_break_fo6w",
    "fieldtype": "Section Break",
    "label": "Variables"
+  },
+  {
+   "fieldname": "button_variable",
+   "fieldtype": "Data",
+   "label": "Button Variable"
   }
  ],
  "grid_page_length": 500,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-05 14:46:12.378548",
+ "modified": "2025-11-07 13:23:35.920117",
  "modified_by": "Administrator",
  "module": "Twilio Integration",
  "name": "WhatsApp Message Template",

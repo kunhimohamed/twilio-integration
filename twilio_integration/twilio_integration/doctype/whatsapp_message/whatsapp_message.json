@@ -24,6 +24,7 @@
   "column_break_o6kp",
   "template_sid",
   "content_variables",
+  "button_url",
   "error",
   "section_break_8gd5",
   "reference_doctype",
@@ -301,6 +302,12 @@
    "label": "Status Reconciliation Failed",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "button_url",
+   "fieldtype": "Small Text",
+   "label": "Button URL",
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -308,7 +315,7 @@
  "index_web_pages_for_search": 1,
  "links": [],
  "max_attachments": 1,
- "modified": "2025-10-31 11:36:59.094391",
+ "modified": "2025-11-07 13:35:42.288246",
  "modified_by": "Administrator",
  "module": "Twilio Integration",
  "name": "WhatsApp Message",

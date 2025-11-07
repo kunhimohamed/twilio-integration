@@ -140,11 +140,11 @@ class WhatsAppMessage(Document):
 
 			if not delayed:
 				if now:
-					send_whatsapp_message(wa_msg.name, auto_commit=not now, now=now)
+					send_whatsapp_message(wa_msg, auto_commit=not now, now=now)
 				else:
 					frappe.enqueue(
 						"twilio_integration.twilio_integration.doctype.whatsapp_message.whatsapp_message.send_whatsapp_message",
-						message_name=wa_msg.name,
+						message_doc=wa_msg.name,
 						enqueue_after_commit=True
 					)
 
@@ -307,6 +307,7 @@ class WhatsAppMessage(Document):
 
 		# Media URL and Content Variables
 		media_url = None
+		button_url = None
 		if not content_variables:
 			content_variables = {}
 
@@ -327,10 +328,16 @@ class WhatsAppMessage(Document):
 					params = get_signed_params({"id": wa_msg.name})
 					media_url = f"{site_url}/api/method/whatsapp.secure_whatsapp_media.pdf?{params}"
 
+		if template.button_variable:
+			button_url = content_variables.get(template.button_variable)
+			if whatsapp_provider != "Twilio" and template.button_variable in content_variables:
+				del content_variables[template.button_variable]
+
 		if content_variables:
 			wa_msg.db_set({
 				"content_variables": json.dumps(content_variables, sort_keys=False) if content_variables else None,
 				"media_url": media_url,
+				"button_url": button_url,
 			})
 
 		return wa_msg
@@ -409,6 +416,12 @@ class WhatsAppMessage(Document):
 			rich_template_data["header"] = {
 				"type": "document",  # TODO determine type
 				"media_url": self.media_url,
+			}
+
+		if self.button_url:
+			rich_template_data["button"] = {
+				"subType": "url",
+				"params": [{"data": self.button_url}]
 			}
 
 		# Variables Body
@@ -502,7 +515,7 @@ class WhatsAppMessage(Document):
 
 		if not self.id:
 			return
-		if self.status not in ('Sent', 'Queued'):
+		if self.status not in ('Sent', 'Queued', 'Delivered'):
 			return
 
 		previous_status = self.status
@@ -636,6 +649,13 @@ def is_whatsapp_enabled(whatsapp_provider=None):
 		return False
 
 
+@frappe.whitelist()
+def send_now(message_name):
+	message_doc = frappe.get_doc("WhatsApp Message", message_name, for_update=True)
+	message_doc.check_permission()
+	send_whatsapp_message(message_doc, auto_commit=False, now=True)
+
+
 def flush_outgoing_message_queue(from_test=False):
 	"""Flush queued WhatsApp Messages, called from scheduler"""
 	auto_commit = not from_test
@@ -645,13 +665,15 @@ def flush_outgoing_message_queue(from_test=False):
 		return
 
 	for message_name in get_queued_outgoing_messages():
-		send_whatsapp_message(message_name, auto_commit=auto_commit)
+		message_doc = frappe.get_doc("WhatsApp Message", message_name, for_update=True)
+		send_whatsapp_message(message_doc, auto_commit=auto_commit)
 
 
-def send_whatsapp_message(message_name, auto_commit=True, now=False):
+def send_whatsapp_message(message_doc, auto_commit=True, now=False):
 	from frappe.email.doctype.notification.notification import get_doc_for_notification_triggers
 
-	message_doc = frappe.get_doc("WhatsApp Message", message_name, for_update=True)
+	if isinstance(message_doc, str):
+		message_doc = frappe.get_doc("WhatsApp Message", message_doc, for_update=True)
 
 	if are_whatsapp_messages_muted(message_doc.whatsapp_provider):
 		frappe.msgprint(_("WhatsApp messages are muted"))
@@ -967,6 +989,13 @@ def incoming_message_callback(args):
 	return out
 
 
+@frappe.whitelist()
+def reconcile_status_now(message_name):
+	message_doc = frappe.get_doc("WhatsApp Message", message_name, for_update=True)
+	message_doc.check_permission()
+	reconcile_message_status(message_doc, auto_commit=False)
+
+
 @frappe.task(queue="long")
 def update_messages_pending_status_reconciliation(limit=100, auto_commit=True):
 	"""
@@ -977,12 +1006,12 @@ def update_messages_pending_status_reconciliation(limit=100, auto_commit=True):
 		frappe.msgprint(_("WhatsApp messages are muted"))
 		return
 
-	for name in get_messages_pending_status_reconciliation(limit):
-		reconcile_message_status(name, auto_commit=auto_commit)
+	for message_name in get_messages_pending_status_reconciliation(limit):
+		message_doc = frappe.get_doc("WhatsApp Message", message_name, for_update=True)
+		reconcile_message_status(message_doc, auto_commit=auto_commit)
 
 
-def reconcile_message_status(message_name, auto_commit=True):
-	message_doc = frappe.get_doc("WhatsApp Message", message_name, for_update=True)
+def reconcile_message_status(message_doc, auto_commit=True):
 	try:
 		message_doc.update_message_delivery_status()
 		if auto_commit:
@@ -1007,7 +1036,7 @@ def reconcile_message_status(message_name, auto_commit=True):
 			title=_("Error Reconciling WhatsApp Message Delivery Status"),
 			message=frappe.get_traceback(),
 			reference_doctype="WhatsApp Message",
-			reference_name=message_name
+			reference_name=message_doc.name
 		)
 
 
