@@ -83,7 +83,14 @@ class NotificationTwilio(Notification):
 		notification_type = self.get_notification_type()
 
 		if notification_type:
-			set_notification_last_scheduled(ref_doctype, ref_name, notification_type, "WhatsApp")
+			set_notification_last_scheduled(
+				ref_doctype,
+				ref_name,
+				notification_type,
+				"WhatsApp",
+				child_doctype=context.get("child_doctype"),
+				child_name=context.get("child_name"),
+			)
 
 		whatsapp_message_template = None
 		content_variables = None
@@ -109,6 +116,8 @@ class NotificationTwilio(Notification):
 			notification_type=notification_type,
 			reference_doctype=ref_doctype,
 			reference_name=ref_name,
+			child_doctype=context.get("child_doctype"),
+			child_name=context.get("child_name"),
 			party_doctype=timeline_doctype,
 			party=timeline_name,
 			whatsapp_message_template=whatsapp_message_template,

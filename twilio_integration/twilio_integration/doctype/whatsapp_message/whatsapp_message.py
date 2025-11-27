@@ -120,7 +120,12 @@ class WhatsAppMessage(Document):
 		)
 
 		doc = get_doc_for_notification_triggers(reference_doctype, reference_name)
-		run_before_send_method(doc=doc, notification_type=notification_type)
+		run_before_send_method(
+			doc=doc,
+			notification_type=notification_type,
+			child_doctype=child_doctype,
+			child_name=child_name,
+		)
 
 		for rec in receiver_list:
 			wa_msg = cls.store_whatsapp_message(
@@ -626,22 +631,44 @@ def outgoing_message_status_callback(args, auto_commit=False):
 			comm.set_delivery_status(commit=auto_commit)
 
 
-def run_before_send_method(doc=None, notification_type=None):
+def run_before_send_method(
+	doc=None,
+	notification_type=None,
+	child_doctype=None,
+	child_name=None,
+):
 	from frappe.email.doctype.notification.notification import run_validate_notification
 
 	if doc and notification_type:
 		validation = run_validate_notification(
-			doc, notification_type, throw=True
+			doc,
+			notification_type,
+			child_doctype=child_doctype,
+			child_name=child_name,
+			throw=True,
 		)
 		if not validation:
 			frappe.throw(_("{0} Notification Validation Failed").format(notification_type))
 
 
-def run_after_send_method(reference_doctype=None, reference_name=None, notification_type=None):
+def run_after_send_method(
+	reference_doctype=None,
+	reference_name=None,
+	notification_type=None,
+	child_doctype=None,
+	child_name=None,
+):
 	from frappe.core.doctype.notification_count.notification_count import add_notification_count
 
 	if reference_doctype and reference_name and notification_type:
-		add_notification_count(reference_doctype, reference_name, notification_type, 'WhatsApp')
+		add_notification_count(
+			reference_doctype,
+			reference_name,
+			notification_type,
+			'WhatsApp',
+			child_doctype=child_doctype,
+			child_name=child_name,
+		)
 
 
 def are_whatsapp_messages_muted(whatsapp_provider=None):
@@ -706,7 +733,12 @@ def send_whatsapp_message(message_doc, auto_commit=True, now=False):
 
 	try:
 		doc = get_doc_for_notification_triggers(message_doc.reference_doctype, message_doc.reference_name)
-		run_before_send_method(doc, notification_type=message_doc.notification_type)
+		run_before_send_method(
+			doc,
+			notification_type=message_doc.notification_type,
+			child_doctype=message_doc.child_doctype,
+			child_name=message_doc.child_name,
+		)
 
 		whatsapp_provider = message_doc.whatsapp_provider
 		if whatsapp_provider == "Twilio":
@@ -729,7 +761,9 @@ def send_whatsapp_message(message_doc, auto_commit=True, now=False):
 		run_after_send_method(
 			reference_doctype=message_doc.reference_doctype,
 			reference_name=message_doc.reference_name,
-			notification_type=message_doc.notification_type
+			notification_type=message_doc.notification_type,
+			child_doctype=message_doc.child_doctype,
+			child_name=message_doc.child_name,
 		)
 
 	except Exception as e:
