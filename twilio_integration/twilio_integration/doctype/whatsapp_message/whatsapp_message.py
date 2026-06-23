@@ -790,7 +790,6 @@ def send_whatsapp_message(message_doc, auto_commit=True, now=False):
 		else:
 			frappe.log_error(
 				title=_("Failed to send WhatsApp Message"),
-				message=frappe.get_traceback(),
 				reference_doctype="WhatsApp Message",
 				reference_name=message_doc.name
 			)
@@ -891,7 +890,6 @@ def download_incoming_media(message_name, auto_commit=True, now=False):
 		else:
 			frappe.log_error(
 				title=_("Failed to download incoming WhatsApp media"),
-				message=frappe.get_traceback(),
 				reference_doctype="WhatsApp Message",
 				reference_name=message_doc.name
 			)
@@ -1031,7 +1029,7 @@ def incoming_message_callback(args):
 			frappe.db.commit()
 		except Exception:
 			frappe.db.rollback()
-			reply_handler.log_error(title="Error handling WhatsApp Message Reply", message=frappe.get_traceback())
+			reply_handler.log_error(title="Error handling WhatsApp Message Reply")
 			out.reply_message = reply_handler.error_reply_message
 		finally:
 			frappe.set_user(original_user)
@@ -1084,7 +1082,6 @@ def reconcile_message_status(message_doc, auto_commit=True):
 
 		frappe.log_error(
 			title=_("Error Reconciling WhatsApp Message Delivery Status"),
-			message=frappe.get_traceback(),
 			reference_doctype="WhatsApp Message",
 			reference_name=message_doc.name
 		)

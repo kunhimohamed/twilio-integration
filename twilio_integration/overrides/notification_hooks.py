@@ -60,7 +60,6 @@ class NotificationTwilio(Notification):
 				self.send_whatsapp_msg(doc, context)
 		except Exception:
 			frappe.log_error(
-				message=frappe.get_traceback(),
 				title=_("Failed to send WhatsApp Notification: {0}").format(self.name),
 				reference_doctype=get_reference_doctype(doc),
 				reference_name=get_reference_name(doc),
