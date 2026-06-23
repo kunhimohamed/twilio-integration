@@ -1,11 +1,12 @@
 import frappe
 from frappe import _
-from twilio_integration.twilio_integration.doctype.whatsapp_message.whatsapp_message import WhatsAppMessage, \
-	are_whatsapp_messages_muted
+from twilio_integration.twilio_integration.doctype.whatsapp_message.whatsapp_message import (
+	WhatsAppMessage,
+	are_whatsapp_messages_muted,
+)
 from frappe.core.doctype.notification_count.notification_count import set_notification_last_scheduled
 from frappe.email.doctype.notification.notification import (
 	Notification,
-	json,
 	get_reference_doctype,
 	get_reference_name,
 )
@@ -43,18 +44,7 @@ class NotificationTwilio(Notification):
 		else:
 			self.whatsapp_message_template = None
 
-	def send(self, doc, context=None):
-		if not context:
-			context = {}
-
-		context.update({"doc": doc, "alert": self, "comments": None})
-
-		if doc.get("_comments"):
-			context["comments"] = json.loads(doc.get("_comments"))
-
-		if self.is_standard:
-			self.load_standard_properties(context)
-
+	def send_notification_by_channel(self, doc, context):
 		try:
 			if self.channel == 'WhatsApp':
 				self.send_whatsapp_msg(doc, context)
@@ -65,7 +55,7 @@ class NotificationTwilio(Notification):
 				reference_name=get_reference_name(doc),
 			)
 
-		super().send(doc, context=context)
+		super().send_notification_by_channel(doc, context=context)
 
 	def send_whatsapp_msg(self, doc, context):
 		if are_whatsapp_messages_muted():
