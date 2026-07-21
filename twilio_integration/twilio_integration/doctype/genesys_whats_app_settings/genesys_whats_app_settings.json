@@ -1,0 +1,109 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-07-21 11:34:00.399170",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "token_name",
+  "client_id",
+  "client_secret",
+  "grant_type",
+  "token_url",
+  "client_authentication",
+  "genesys_oauth_cache_key",
+  "api_end_point",
+  "from_number",
+  "genesys_whatsapp_details"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enable"
+  },
+  {
+   "fieldname": "api_end_point",
+   "fieldtype": "Small Text",
+   "label": "API End Point"
+  },
+  {
+   "fieldname": "from_number",
+   "fieldtype": "Data",
+   "label": "From Number"
+  },
+  {
+   "fieldname": "genesys_whatsapp_details",
+   "fieldtype": "Table",
+   "label": "Genesys WhatsApp Details",
+   "options": "Genesys WhatsApp Details"
+  },
+  {
+   "fieldname": "token_name",
+   "fieldtype": "Data",
+   "label": "Token Name"
+  },
+  {
+   "fieldname": "client_id",
+   "fieldtype": "Data",
+   "label": "Client ID"
+  },
+  {
+   "fieldname": "client_secret",
+   "fieldtype": "Password",
+   "label": "Client Secret"
+  },
+  {
+   "default": "client_credentials",
+   "fieldname": "grant_type",
+   "fieldtype": "Select",
+   "label": "Grant Type",
+   "options": "client_credentials"
+  },
+  {
+   "fieldname": "token_url",
+   "fieldtype": "Data",
+   "label": "Token URL"
+  },
+  {
+   "default": "Send As Basic Auth Header",
+   "fieldname": "client_authentication",
+   "fieldtype": "Select",
+   "label": "Client Authentication",
+   "options": "Send As Basic Auth Header"
+  },
+  {
+   "fieldname": "genesys_oauth_cache_key",
+   "fieldtype": "Data",
+   "label": "Cache Key"
+  }
+ ],
+ "grid_page_length": 500,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-07-21 12:03:41.913731",
+ "modified_by": "Administrator",
+ "module": "Twilio Integration",
+ "name": "Genesys Whats App Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

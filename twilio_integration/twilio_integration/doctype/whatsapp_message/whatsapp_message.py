@@ -82,6 +82,7 @@ class WhatsAppMessage(Document):
 		receiver_list,
 		message=None,
 		notification_type=None,
+		notification_name=None,
 		reference_doctype=None,
 		reference_name=None,
 		child_doctype=None,
@@ -98,7 +99,6 @@ class WhatsAppMessage(Document):
 		now=False,
 	):
 		from frappe.email.doctype.notification.notification import get_doc_for_notification_triggers
-
 		if are_whatsapp_messages_muted(whatsapp_provider):
 			frappe.msgprint(_("WhatsApp is muted"))
 			return
@@ -144,6 +144,7 @@ class WhatsAppMessage(Document):
 				whatsapp_provider=whatsapp_provider,
 				content_variables=content_variables,
 				notification_type=notification_type,
+				notification_name=notification_name
 			)
 
 			if not delayed:
@@ -278,10 +279,15 @@ class WhatsAppMessage(Document):
 		whatsapp_provider=None,
 		content_variables=None,
 		notification_type=None,
+		notification_name=None,
 	):
-		sender = frappe.db.get_single_value('WhatsApp Settings', 'whatsapp_no')
+		if whatsapp_provider and whatsapp_provider == "Genesys":
+			whatsapp_provider_settings = frappe.get_single("Genesys Whats App Settings")
+			sender = whatsapp_provider_settings.from_number
 		if not sender:
-			frappe.throw(_("Please configure WhatsApp Number"))
+			sender = frappe.db.get_single_value('WhatsApp Settings', 'whatsapp_no')
+			if not sender:
+				frappe.throw(_("Please configure WhatsApp Number"))
 
 		whatsapp_provider = whatsapp_provider or frappe.db.get_single_value('WhatsApp Settings', 'whatsapp_provider')
 		if not whatsapp_provider:
@@ -305,6 +311,7 @@ class WhatsAppMessage(Document):
 			'attachment': json.dumps(attachment) if attachment else None,
 			'communication': communication,
 			'notification_type': notification_type,
+			'notification_name': notification_name,
 			'template_sid': template.template_sid or None,
 			'reply_handler': reply_handler or None,
 			'whatsapp_provider': whatsapp_provider or None,
@@ -401,6 +408,108 @@ class WhatsAppMessage(Document):
 			args['media_url'] = [f"{site_url}/api/method/twilio.whatsapp_media?id={quote(self.name)}"]
 
 		return args
+	
+	def send_whatsapp_via_genesys(self):
+		from collections import OrderedDict
+		genesys_settings = frappe.get_single("Genesys Whats App Settings")
+		access_token = genesys_settings.get_access_token()
+
+		response_id = frappe.get_cached_value("Notification", self.notification_name, response_id)
+		
+		if not response_id:
+			frappe.msgprint("The response ID not available")
+			out = frappe._dict({
+				"id": None,
+				"status": "Error",
+				"date_sent": None,
+				"error": "The response ID not available",
+			})
+			return out
+
+		body_prameters = frappe.db.get_value("Genesys WhatsApp Details", {
+				"response_id":response_id, "parenttype":"Genesys Whats App Settings", 
+				"reference_doctype":self.reference_doctype
+			}, "body_prameters")
+		final_result_body_prameters = []
+		if body_prameters:
+			body_prameters = json.loads(body_prameters)
+			result_body_prameters = OrderedDict()
+
+			reference_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
+
+			for item in body_prameters:
+				value = reference_doc.get(item["field"], "")
+				if not value:
+					continue
+
+				if item["id"] not in result_body_prameters:
+					result_body_prameters[item["id"]] = {
+						"id": item["id"],
+						"field": str(value),
+					}
+				else:
+					result_body_prameters[item["id"]]["field"] += f" {value}"
+			final_result_body_prameters = list(result_body_prameters.values())
+
+		if not genesys_settings.api_end_point:
+			frappe.msgprint("The API URL not available")
+			out = frappe._dict({
+				"id": None,
+				"status": "Error",
+				"date_sent": None,
+				"error": "The API URL not available",
+			})
+			return out
+		
+		if not genesys_settings.from_number:
+			frappe.msgprint("The Sender Number not available")
+			out = frappe._dict({
+				"id": None,
+				"status": "Error",
+				"date_sent": None,
+				"error": "The Sender Number not available",
+			})
+			return out
+		
+		url = genesys_settings.api_end_point
+
+		to = self.to.replace("whatsapp:", "")
+
+		headers = {
+			"Content-Type": "application/json",
+			"Authorization": f"Bearer {access_token}",
+		}
+
+		payload = {
+			"fromAddress": f"{genesys_settings.from_number}",
+			"toAddress": f"{to}",
+			"toAddressMessengerType": "whatsapp",
+			"textBody": "",
+			"messagingTemplate": {
+				"responseId": f"{response_id}",
+				"bodyParameters": final_result_body_prameters
+			}
+		}
+
+		response = requests.post(
+			url,
+			headers=headers,
+			json=payload,
+			timeout=30,
+		)
+		response.raise_for_status()
+
+		response_data = response.json()
+
+		out = frappe._dict({
+			"id": response_data.get("request_id"),
+			"status": "Queued",
+			"date_sent": frappe.utils.now(),
+			"error": None,
+		})
+		self.id = out.id
+
+		return out
 
 	def send_whatsapp_via_freshchat(self):
 		freshchat_settings = frappe.get_single("Freshchat Settings")
@@ -680,7 +789,7 @@ def are_whatsapp_messages_muted(whatsapp_provider=None):
 
 def is_whatsapp_enabled(whatsapp_provider=None):
 	whatsapp_no = frappe.get_cached_value("WhatsApp Settings", None, "whatsapp_no")
-	if not whatsapp_no:
+	if not whatsapp_no and not whatsapp_provider:
 		return False
 
 	whatsapp_provider = whatsapp_provider or frappe.get_cached_value("WhatsApp Settings", None, "whatsapp_provider")
@@ -688,6 +797,8 @@ def is_whatsapp_enabled(whatsapp_provider=None):
 		return True if frappe.get_cached_value("Twilio Settings", None, 'enabled') else False
 	elif whatsapp_provider == "Freshchat":
 		return True if frappe.get_cached_value("Freshchat Settings", None, 'enabled') else False
+	elif whatsapp_provider == "Genesys":
+		return True if frappe.get_cached_value("Genesys Whats App Settings", None, 'enabled') else False
 	else:
 		return False
 
@@ -745,6 +856,8 @@ def send_whatsapp_message(message_doc, auto_commit=True, now=False):
 			result = message_doc.send_whatsapp_via_twilio()
 		elif whatsapp_provider == "Freshchat":
 			result = message_doc.send_whatsapp_via_freshchat()
+		elif whatsapp_provider == "Genesys":
+			result = message_doc.send_whatsapp_via_genesys()
 		else:
 			frappe.throw(_("Please configure WhatsApp Provider"))
 
