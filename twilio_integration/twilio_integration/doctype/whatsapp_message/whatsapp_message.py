@@ -502,12 +502,14 @@ class WhatsAppMessage(Document):
 		response_data = response.json()
 
 		out = frappe._dict({
-			"id": response_data.get("request_id"),
+			"id": response_data.get("id"),
+			"conversation_id": response_data.get("conversationId"),
 			"status": "Queued",
 			"date_sent": frappe.utils.now(),
 			"error": None,
 		})
 		self.id = out.id
+		self.conversation_id = out.conversation_id
 
 		return out
 
@@ -667,6 +669,8 @@ class WhatsAppMessage(Document):
 			return self.get_message_status_from_twilio()
 		elif self.whatsapp_provider == "Freshchat":
 			return self.get_message_status_from_freshchat()
+		elif self.whatsapp_provider == "Genesys":
+			return self.get_message_status_from_genesys()
 		else:
 			return frappe._dict()
 
@@ -716,6 +720,47 @@ class WhatsAppMessage(Document):
 			out.status = message_data.get("status").title()
 
 		if out.status == "Failed":
+			out.error = message_data.get("failure_reason")
+
+		return out
+
+	def get_message_status_from_genesys(self):
+
+		genesys_settings = frappe.get_single("Genesys Whats App Settings")
+		access_token = genesys_settings.get_access_token()
+
+		url = genesys_settings.api_end_point
+
+		out = frappe._dict({
+			"status": None,
+			"error": None,
+		})
+		if not self.id or not self.conversation_id:
+			return out
+		
+		url = f"https://api.mypurecloud.de/api/v2/conversations/messages/{self.conversation_id}/messages/{self.id}"
+
+		headers = {
+			"Authorization": f"Bearer {access_token}",
+			"Content-Type": "application/json"
+		}
+
+		response = requests.get(url, headers=headers)
+		response.raise_for_status()
+
+		response_data = response.json()
+
+		message_data = response_data.get("status")
+
+		if not message_data or not message_data.get("status"):
+			return out
+
+		if message_data.get("status") in ("IN_PROGRESS", "ACCEPTED"):
+			out.status = "Queued"
+		else:
+			out.status = message_data.get("status").title()
+
+		if out.status == "delivery-failed":
 			out.error = message_data.get("failure_reason")
 
 		return out
