@@ -277,7 +277,6 @@ class WhatsAppMessage(Document):
 		whatsapp_provider=None,
 		content_variables=None,
 		notification_type=None,
-		notification_name=None,
 	):
 		if whatsapp_provider and whatsapp_provider == "Genesys":
 			whatsapp_provider_settings = frappe.get_single("Genesys WhatsApp Settings")
@@ -309,7 +308,6 @@ class WhatsAppMessage(Document):
 			'attachment': json.dumps(attachment) if attachment else None,
 			'communication': communication,
 			'notification_type': notification_type,
-			'notification_name': notification_name,
 			'template_sid': template.template_sid or None,
 			'reply_handler': reply_handler or None,
 			'whatsapp_provider': whatsapp_provider or None,
