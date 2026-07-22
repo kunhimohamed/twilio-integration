@@ -414,7 +414,7 @@ class WhatsAppMessage(Document):
 		genesys_settings = frappe.get_single("Genesys Whats App Settings")
 		access_token = genesys_settings.get_access_token()
 
-		response_id = frappe.get_cached_value("Notification", self.notification_name, response_id)
+		response_id = frappe.get_cached_value("Notification", self.notification_name, "response_id")
 		
 		if not response_id:
 			frappe.msgprint("The response ID not available")
@@ -426,18 +426,18 @@ class WhatsAppMessage(Document):
 			})
 			return out
 
-		body_prameters = frappe.db.get_value("Genesys WhatsApp Details", {
+		body_parameters = frappe.db.get_value("Genesys WhatsApp Details", {
 				"response_id":response_id, "parenttype":"Genesys Whats App Settings", 
 				"reference_doctype":self.reference_doctype
-			}, "body_prameters")
+			}, "body_parameters")
 		final_result_body_prameters = []
-		if body_prameters:
-			body_prameters = json.loads(body_prameters)
+		if body_parameters:
+			body_parameters = json.loads(body_parameters)
 			result_body_prameters = OrderedDict()
 
 			reference_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
 
-			for item in body_prameters:
+			for item in body_parameters:
 				value = reference_doc.get(item["field"], "")
 				if not value:
 					continue
@@ -445,10 +445,10 @@ class WhatsAppMessage(Document):
 				if item["id"] not in result_body_prameters:
 					result_body_prameters[item["id"]] = {
 						"id": item["id"],
-						"field": str(value),
+						"value": str(value),
 					}
 				else:
-					result_body_prameters[item["id"]]["field"] += f" {value}"
+					result_body_prameters[item["id"]]["value"] += f" {value}"
 			final_result_body_prameters = list(result_body_prameters.values())
 
 		if not genesys_settings.api_end_point:
@@ -494,9 +494,10 @@ class WhatsAppMessage(Document):
 		response = requests.post(
 			url,
 			headers=headers,
-			json=payload,
+			data=frappe.as_json(payload),
 			timeout=30,
 		)
+
 		response.raise_for_status()
 
 		response_data = response.json()
@@ -754,9 +755,11 @@ class WhatsAppMessage(Document):
 
 		if not message_data or not message_data.get("status"):
 			return out
-
-		if message_data.get("status") in ("IN_PROGRESS", "ACCEPTED"):
-			out.status = "Queued"
+		
+		if message_data.get("status") == "delivery-success":
+			out.status = "Delivered"
+		elif message_data.get("status") == "delivery-failed":
+			out.status = "Failed"
 		else:
 			out.status = message_data.get("status").title()
 
