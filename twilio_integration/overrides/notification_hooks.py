@@ -17,42 +17,39 @@ class NotificationTwilio(Notification):
 		super().validate()
 		self.validate_twilio_settings()
 		self.validate_whatsapp_template()
-	
+
 	def validate_twilio_settings(self):
-		if self.enabled and self.channel == "WhatsApp":
-			if self.whatsapp_provider and self.whatsapp_provider == "Genesys":
-				if not self.response_id:
-					frappe.throw(_("In Genesys Settings Response ID is mandatory"))
-				genesys_settings = frappe.get_single("Genesys Whats App Settings")
-				if not genesys_settings.whatsapp_enabled:
-					frappe.throw(_("Genesys Whats App Settings must be enabled to send WhatsApp notifications"))
-				return
-					
-			whatsapp_settings = frappe.get_single("WhatsApp Settings")
-			if not whatsapp_settings.whatsapp_no:
-				frappe.throw(_("WhatsApp Number is required in WhatsApp Settings"))
-			if self.whatsapp_provider and self.whatsapp_provider =="Twilio":
-				twilio_settings = frappe.get_single("Twilio Settings")
-				if not twilio_settings.enabled:
-					frappe.throw(_("Twilio Settings must be enabled to send WhatsApp notifications"))
-			elif self.whatsapp_provider and self.whatsapp_provider =="Freshchat":
-				freshchat_settings = frappe.get_single("Freshchat Settings")
-				if not freshchat_settings.enabled:
-					frappe.throw(_("Freshchat Settings must be enabled to send WhatsApp notifications"))
-				if not self.use_whatsapp_template:
-					frappe.throw(_("Freshchat does not allow non-template messages. Please select WhatsApp Message Template instead"))
-			elif whatsapp_settings.whatsapp_provider == "Twilio":
-				twilio_settings = frappe.get_single("Twilio Settings")
-				if not twilio_settings.enabled:
-					frappe.throw(_("Twilio Settings must be enabled to send WhatsApp notifications"))
-			elif whatsapp_settings.whatsapp_provider == "Freshchat":
-				freshchat_settings = frappe.get_single("Freshchat Settings")
-				if not freshchat_settings.enabled:
-					frappe.throw(_("Freshchat Settings must be enabled to send WhatsApp notifications"))
-				if not self.use_whatsapp_template:
-					frappe.throw(_("Freshchat does not allow non-template messages. Please select WhatsApp Message Template instead"))
-			else:
-				frappe.throw(_("Please configure WhatsApp Provider"))
+		if not (self.enabled and self.channel == "WhatsApp"):
+			return
+
+		if self.whatsapp_provider == "Genesys":
+			if not self.response_id:
+				frappe.throw(_("In Genesys Settings Response ID is mandatory"))
+			genesys_settings = frappe.get_single("Genesys WhatsApp Settings")
+			if not genesys_settings.whatsapp_enabled:
+				frappe.throw(_("Genesys WhatsApp Settings must be enabled to send WhatsApp notifications"))
+			return
+
+		whatsapp_settings = frappe.get_single("WhatsApp Settings")
+		if not whatsapp_settings.whatsapp_no:
+			frappe.throw(_("WhatsApp Number is required in WhatsApp Settings"))
+
+		provider = self.whatsapp_provider or whatsapp_settings.whatsapp_provider
+
+		if provider == "Twilio":
+			twilio_settings = frappe.get_single("Twilio Settings")
+			if not twilio_settings.enabled:
+				frappe.throw(_("Twilio Settings must be enabled to send WhatsApp notifications"))
+
+		elif provider == "Freshchat":
+			freshchat_settings = frappe.get_single("Freshchat Settings")
+			if not freshchat_settings.enabled:
+				frappe.throw(_("Freshchat Settings must be enabled to send WhatsApp notifications"))
+			if not self.use_whatsapp_template:
+				frappe.throw(_("Freshchat does not allow non-template messages. Please select WhatsApp Message Template instead"))
+
+		else:
+			frappe.throw(_("Please configure WhatsApp Provider"))
 
 	def validate_whatsapp_template(self):
 		if self.use_whatsapp_template:
@@ -120,7 +117,6 @@ class NotificationTwilio(Notification):
 			receiver_list=receiver_list,
 			message=message,
 			notification_type=notification_type,
-			notification_name=self.name,
 			reference_doctype=ref_doctype,
 			reference_name=ref_name,
 			child_doctype=context.get("child_doctype"),

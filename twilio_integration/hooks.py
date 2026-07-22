@@ -48,8 +48,7 @@ fixtures = [
 				"Notification-use_whatsapp_template",
 				"Notification-custom_column_break_nckpb",
 				"Notification-whatsapp_reply_handler",
-                "Notification-whatsapp_provider",
-                "Notification-response_id"
+                "Notification-whatsapp_provider"
 			]]
 		}
 	},

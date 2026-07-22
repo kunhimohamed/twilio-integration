@@ -13,9 +13,9 @@
   "token_url",
   "client_authentication",
   "genesys_oauth_cache_key",
-  "api_end_point",
+  "column_break_uxwk",
   "from_number",
-  "genesys_whatsapp_details"
+  "api_end_point"
  ],
  "fields": [
   {
@@ -33,13 +33,6 @@
    "fieldname": "from_number",
    "fieldtype": "Data",
    "label": "From Number"
-  },
-  {
-   "allow_bulk_edit": 1,
-   "fieldname": "genesys_whatsapp_details",
-   "fieldtype": "Table",
-   "label": "Genesys WhatsApp Details",
-   "options": "Genesys WhatsApp Details"
   },
   {
    "fieldname": "token_name",
@@ -79,16 +72,20 @@
    "fieldname": "genesys_oauth_cache_key",
    "fieldtype": "Data",
    "label": "Cache Key"
+  },
+  {
+   "fieldname": "column_break_uxwk",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 500,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-07-22 13:00:55.878747",
+ "modified": "2026-07-22 16:07:03.875819",
  "modified_by": "Administrator",
  "module": "Twilio Integration",
- "name": "Genesys Whats App Settings",
+ "name": "Genesys WhatsApp Settings",
  "owner": "Administrator",
  "permissions": [
   {

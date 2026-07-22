@@ -1,7 +1,7 @@
 // Copyright (c) 2026, Frappe and contributors
 // For license information, please see license.txt
 
-// frappe.ui.form.on("Genesys Whats App Settings", {
+// frappe.ui.form.on("Genesys WhatsApp Settings", {
 // 	refresh(frm) {
 
 // 	},
