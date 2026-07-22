@@ -35,6 +35,7 @@
    "label": "From Number"
   },
   {
+   "allow_bulk_edit": 1,
    "fieldname": "genesys_whatsapp_details",
    "fieldtype": "Table",
    "label": "Genesys WhatsApp Details",
@@ -84,7 +85,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-07-21 12:03:41.913731",
+ "modified": "2026-07-22 13:00:55.878747",
  "modified_by": "Administrator",
  "module": "Twilio Integration",
  "name": "Genesys Whats App Settings",
