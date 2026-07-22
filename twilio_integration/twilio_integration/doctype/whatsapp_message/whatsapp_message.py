@@ -406,7 +406,6 @@ class WhatsAppMessage(Document):
 		return args
 	
 	def send_whatsapp_via_genesys(self):
-		from collections import OrderedDict
 		
 		if not self.template_sid:
 			frappe.msgprint("The response ID not available")
