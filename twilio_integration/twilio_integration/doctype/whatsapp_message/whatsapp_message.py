@@ -89,8 +89,8 @@ class WhatsAppMessage(Document):
 		party_doctype=None,
 		party=None,
 		whatsapp_message_template=None,
-		whatsapp_reply_handler=None,
 		whatsapp_provider=None,
+		whatsapp_reply_handler=None,
 		content_variables=None,
 		attachment=None,
 		automated=False,
@@ -140,8 +140,8 @@ class WhatsAppMessage(Document):
 				communication=communication,
 				attachment=attachment,
 				whatsapp_message_template=whatsapp_message_template,
-				whatsapp_reply_handler=whatsapp_reply_handler,
 				whatsapp_provider=whatsapp_provider,
+				whatsapp_reply_handler=whatsapp_reply_handler,
 				content_variables=content_variables,
 				notification_type=notification_type,
 			)
@@ -274,8 +274,8 @@ class WhatsAppMessage(Document):
 		communication=None,
 		attachment=None,
 		whatsapp_message_template=None,
-		whatsapp_reply_handler=None,
 		whatsapp_provider=None,
+		whatsapp_reply_handler=None,
 		content_variables=None,
 		notification_type=None,
 	):
@@ -402,6 +402,85 @@ class WhatsAppMessage(Document):
 
 		return args
 
+	def send_whatsapp_via_genesys(self):
+		genesys_settings = frappe.get_single("Genesys WhatsApp Settings")
+
+		url = urljoin(genesys_settings.api_base_url, "/api/v2/conversations/messages/agentless")
+		from_address = genesys_settings.from_address
+
+		to_number = self.to.replace("whatsapp:", "")
+		if to_number.startswith("+"):
+			to_number = to_number[1:]
+
+		# Template Body
+		body_parameters = []
+		if self.content_variables:
+			content_variables = json.loads(self.content_variables)
+			for i, value in enumerate(content_variables.values()):
+				body_parameters.append({"id": i + 1, "value": value})
+
+		# Media Header
+		header_parameters = []
+		if self.media_url:
+			header_parameters.append({"id": 1, "value": self.media_url})
+
+		# Button URL
+		button_parameters = []
+		if self.button_url:
+			button_parameters.append({"id": 1, "value": self.button_url})
+
+		access_token = genesys_settings.get_access_token()
+		headers = {
+			"Content-Type": "application/json",
+			"Authorization": f"Bearer {access_token}",
+		}
+
+		payload = {
+			"fromAddress": from_address,
+			"toAddress": to_number,
+			"toAddressMessengerType": "whatsapp",
+			"textBody": "",
+			"messagingTemplate": {
+				"responseId": self.template_sid,
+				"bodyParameters": body_parameters,
+				"headerParameters": header_parameters,
+				"buttonUrlParameters": button_parameters,
+			}
+		}
+
+		response = requests.post(
+			url,
+			headers=headers,
+			json=payload,
+			timeout=30,
+		)
+
+		try:
+			response.raise_for_status()
+		except Exception as e:
+			try:
+				response_data = response.json()
+				if response_data.get("message"):
+					e.args = (response_data.get("message"),)
+			except Exception:
+				pass
+
+			raise e
+
+		response_data = response.json()
+
+		out = frappe._dict({
+			"id": response_data.get("id"),
+			"conversation_id": response_data.get("conversationId"),
+			"status": "Queued",
+			"date_sent": frappe.utils.now(),
+			"error": None,
+		})
+		self.id = out.id
+		self.conversation_id = out.conversation_id
+
+		return out
+
 	def send_whatsapp_via_freshchat(self):
 		freshchat_settings = frappe.get_single("Freshchat Settings")
 
@@ -467,9 +546,13 @@ class WhatsAppMessage(Document):
 			"data": message_data,
 		}
 
-		response = requests.post(api_endpoint, headers=headers, json=payload)
+		response = requests.post(
+			api_endpoint,
+			headers=headers,
+			json=payload,
+			timeout=30,
+		)
 		response.raise_for_status()
-
 		response_data = response.json()
 
 		out = frappe._dict({
@@ -558,6 +641,8 @@ class WhatsAppMessage(Document):
 			return self.get_message_status_from_twilio()
 		elif self.whatsapp_provider == "Freshchat":
 			return self.get_message_status_from_freshchat()
+		elif self.whatsapp_provider == "Genesys":
+			return self.get_message_status_from_genesys()
 		else:
 			return frappe._dict()
 
@@ -590,9 +675,13 @@ class WhatsAppMessage(Document):
 			"Content-Type": "application/json"
 		}
 
-		response = requests.get(api_endpoint, headers=headers, params={"request_id": self.id})
+		response = requests.get(
+			api_endpoint,
+			headers=headers,
+			params={"request_id": self.id},
+			timeout=30,
+		)
 		response.raise_for_status()
-
 		response_data = response.json()
 
 		message_data = response_data.get("outbound_messages")
@@ -608,6 +697,44 @@ class WhatsAppMessage(Document):
 
 		if out.status == "Failed":
 			out.error = message_data.get("failure_reason")
+
+		return out
+
+	def get_message_status_from_genesys(self):
+		out = frappe._dict({
+			"status": None,
+			"error": None,
+		})
+		if not self.id or not self.conversation_id:
+			return out
+
+		genesys_settings = frappe.get_single("Genesys WhatsApp Settings")
+
+		url = urljoin(genesys_settings.api_base_url, f"/api/v2/conversations/messages/{quote(self.conversation_id)}/messages/{quote(self.id)}")
+		access_token = genesys_settings.get_access_token()
+
+		headers = {
+			"Authorization": f"Bearer {access_token}",
+			"Content-Type": "application/json"
+		}
+
+		response = requests.get(url, headers=headers, timeout=30)
+		response.raise_for_status()
+		response_data = response.json()
+
+		if not response_data or not response_data.get("status"):
+			return out
+
+		if response_data.get("status") == "delivery-success":
+			out.status = "Delivered"
+		elif response_data.get("status") == "delivery-failed":
+			out.status = "Failed"
+		else:
+			out.status = response_data.get("status").title()
+
+		# todo get error message
+		# if out.status == "delivery-failed":
+		# 	out.error = response_data.get("failure_reason")
 
 		return out
 
@@ -688,6 +815,8 @@ def is_whatsapp_enabled(whatsapp_provider=None):
 		return True if frappe.get_cached_value("Twilio Settings", None, 'enabled') else False
 	elif whatsapp_provider == "Freshchat":
 		return True if frappe.get_cached_value("Freshchat Settings", None, 'enabled') else False
+	elif whatsapp_provider == "Genesys":
+		return True if frappe.get_cached_value("Genesys WhatsApp Settings", None, 'enabled') else False
 	else:
 		return False
 
@@ -696,7 +825,10 @@ def is_whatsapp_enabled(whatsapp_provider=None):
 def send_now(message_name):
 	message_doc = frappe.get_doc("WhatsApp Message", message_name, for_update=True)
 	message_doc.check_permission()
-	send_whatsapp_message(message_doc, auto_commit=False, now=True)
+	try:
+		send_whatsapp_message(message_doc, auto_commit=False, now=True)
+	except Exception as e:
+		frappe.throw(str(e))
 
 
 def flush_outgoing_message_queue(from_test=False):
@@ -745,11 +877,14 @@ def send_whatsapp_message(message_doc, auto_commit=True, now=False):
 			result = message_doc.send_whatsapp_via_twilio()
 		elif whatsapp_provider == "Freshchat":
 			result = message_doc.send_whatsapp_via_freshchat()
+		elif whatsapp_provider == "Genesys":
+			result = message_doc.send_whatsapp_via_genesys()
 		else:
 			frappe.throw(_("Please configure WhatsApp Provider"))
 
 		message_doc.db_set({
 			"id": result.get("id"),
+			"conversation_id": result.get("conversation_id"),
 			"status": result.get("status"),
 			"date_sent": result.get("date_sent"),
 			"error": result.get("error"),
