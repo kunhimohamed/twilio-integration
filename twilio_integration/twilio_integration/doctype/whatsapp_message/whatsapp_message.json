@@ -7,7 +7,6 @@
  "engine": "InnoDB",
  "field_order": [
   "notification_type",
-  "notification_name",
   "profile_name",
   "from_",
   "to",
@@ -312,13 +311,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "notification_name",
-   "fieldtype": "Data",
-   "label": "Notification Name",
-   "no_copy": 1,
-   "read_only": 1
-  },
-  {
    "fieldname": "conversation_id",
    "fieldtype": "Data",
    "label": "Conversation ID",
@@ -331,7 +323,7 @@
  "index_web_pages_for_search": 1,
  "links": [],
  "max_attachments": 1,
- "modified": "2026-07-21 17:16:07.246326",
+ "modified": "2026-07-23 12:17:18.375828",
  "modified_by": "Administrator",
  "module": "Twilio Integration",
  "name": "WhatsApp Message",

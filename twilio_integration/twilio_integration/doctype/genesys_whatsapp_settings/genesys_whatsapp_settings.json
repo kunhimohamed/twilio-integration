@@ -5,84 +5,61 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "enabled",
-  "token_name",
   "client_id",
   "client_secret",
-  "grant_type",
-  "token_url",
-  "client_authentication",
-  "genesys_oauth_cache_key",
+  "enabled",
   "column_break_uxwk",
-  "from_number",
-  "api_end_point"
+  "from_address",
+  "login_base_url",
+  "api_base_url"
  ],
  "fields": [
   {
    "default": "0",
    "fieldname": "enabled",
    "fieldtype": "Check",
-   "label": "Enable"
-  },
-  {
-   "fieldname": "api_end_point",
-   "fieldtype": "Small Text",
-   "label": "API End Point"
-  },
-  {
-   "fieldname": "from_number",
-   "fieldtype": "Data",
-   "label": "From Number"
-  },
-  {
-   "fieldname": "token_name",
-   "fieldtype": "Data",
-   "label": "Token Name"
+   "label": "Enabled"
   },
   {
    "fieldname": "client_id",
    "fieldtype": "Data",
-   "label": "Client ID"
+   "label": "Client ID",
+   "mandatory_depends_on": "enabled"
   },
   {
    "fieldname": "client_secret",
    "fieldtype": "Password",
-   "label": "Client Secret"
-  },
-  {
-   "default": "client_credentials",
-   "fieldname": "grant_type",
-   "fieldtype": "Select",
-   "label": "Grant Type",
-   "options": "client_credentials"
-  },
-  {
-   "fieldname": "token_url",
-   "fieldtype": "Data",
-   "label": "Token URL"
-  },
-  {
-   "default": "Send As Basic Auth Header",
-   "fieldname": "client_authentication",
-   "fieldtype": "Select",
-   "label": "Client Authentication",
-   "options": "Send As Basic Auth Header"
-  },
-  {
-   "fieldname": "genesys_oauth_cache_key",
-   "fieldtype": "Data",
-   "label": "Cache Key"
+   "label": "Client Secret",
+   "mandatory_depends_on": "enabled"
   },
   {
    "fieldname": "column_break_uxwk",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "from_address",
+   "fieldtype": "Data",
+   "label": "Sender Address",
+   "mandatory_depends_on": "enabled"
+  },
+  {
+   "fieldname": "login_base_url",
+   "fieldtype": "Data",
+   "label": "Login Hostname",
+   "mandatory_depends_on": "enabled"
+  },
+  {
+   "fieldname": "api_base_url",
+   "fieldtype": "Data",
+   "label": "API Hostname",
+   "mandatory_depends_on": "enabled"
   }
  ],
  "grid_page_length": 500,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-07-22 16:07:03.875819",
+ "modified": "2026-07-23 13:25:59.595364",
  "modified_by": "Administrator",
  "module": "Twilio Integration",
  "name": "Genesys WhatsApp Settings",
