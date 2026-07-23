@@ -407,13 +407,16 @@ class WhatsAppMessage(Document):
 
 		url = urljoin(genesys_settings.api_base_url, "/api/v2/conversations/messages/agentless")
 		from_address = genesys_settings.from_address
+
 		to_number = self.to.replace("whatsapp:", "")
+		if to_number.startswith("+"):
+			to_number = to_number[1:]
 
 		# Template Body
 		body_parameters = []
 		if self.content_variables:
-			body_parameters = json.loads(self.content_variables)
-			for i, value in enumerate(body_parameters.values()):
+			content_variables = json.loads(self.content_variables)
+			for i, value in enumerate(content_variables.values()):
 				body_parameters.append({"id": i + 1, "value": value})
 
 		# Media Header
@@ -451,7 +454,19 @@ class WhatsAppMessage(Document):
 			json=payload,
 			timeout=30,
 		)
-		response.raise_for_status()
+
+		try:
+			response.raise_for_status()
+		except Exception as e:
+			try:
+				response_data = response.json()
+				if response_data.get("message"):
+					e.args = (response_data.get("message"),)
+			except Exception:
+				pass
+
+			raise e
+
 		response_data = response.json()
 
 		out = frappe._dict({
@@ -810,7 +825,10 @@ def is_whatsapp_enabled(whatsapp_provider=None):
 def send_now(message_name):
 	message_doc = frappe.get_doc("WhatsApp Message", message_name, for_update=True)
 	message_doc.check_permission()
-	send_whatsapp_message(message_doc, auto_commit=False, now=True)
+	try:
+		send_whatsapp_message(message_doc, auto_commit=False, now=True)
+	except Exception as e:
+		frappe.throw(str(e))
 
 
 def flush_outgoing_message_queue(from_test=False):
@@ -866,6 +884,7 @@ def send_whatsapp_message(message_doc, auto_commit=True, now=False):
 
 		message_doc.db_set({
 			"id": result.get("id"),
+			"conversation_id": result.get("conversation_id"),
 			"status": result.get("status"),
 			"date_sent": result.get("date_sent"),
 			"error": result.get("error"),
